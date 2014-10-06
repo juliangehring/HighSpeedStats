@@ -1,0 +1,214 @@
+#+TITLE: High Speed Statistics: Efficient Statistical Implementations
+#+AUTHOR: Julian Gehring
+
+#+OPTIONS: html-postamble:nil html-preamble:nil html-style:nil
+#+INFOJS_OPT: view:showall toc:t ftoc:t ltoc:nil
+
+#+PROPERTY: tangle yes
+
+#+BEGIN_HTML
+<!--
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{HighSpeedStats}
+%\VignettePackage{HighSpeedStats}
+-->
+#+END_HTML
+
+
+#+BEGIN_SRC R :exports code :ravel results='hide', echo=FALSE, message=FALSE, warning=FALSE
+  set.seed(1)
+
+  options(width = 70)
+
+  library(knitr)
+
+  style_sheet = "bioc.css"
+  style = if(file.exists(style_sheet)) {
+      paste(readLines(style_sheet), collapse = "\n")
+  }
+      
+  opts_knit$set(self.contained = TRUE,
+                upload.fun = image_uri,
+                header = c(highlight = style))
+
+  opts_chunk$set(comment = "  ",
+                 fig.path = "",
+                 fig.align = "center",
+                 out.width = "100%",
+                 dpi = 300,
+                 indent = 10,
+                 cache = FALSE,
+                 cache.path = "../cache")
+
+  knit_hooks$set(fig.cap = function(before, options, envir) {
+      if(!before) {
+          paste('<p class="caption">',options$fig.cap,"</p>",sep="")
+      }
+  })
+#+END_SRC
+
+
+* Motivation
+
+The amount of data in the field of computational biology increases at a fast
+pace, and together with this the computational demands for analyzing it.  This
+setting poses new challenges to the algorithms and implementations used in the
+analysis of this data, and demand for a high-throughput processing of big
+amounts of data efficiently.
+
+The =R= programming languages has gained a central role in the analysis
+workflows of biological data.  While a large number of relevant methods are
+offered by this, the implementations are often not suited for a large scale
+analysis, and can become a bottleneck.
+
+With the =highSpeedStats= package, we provide a selected set of statistical
+functions, optimized for a speed and memory efficient implementation.  We plan
+to release the existing functionality as an open-source project, and continue
+the development as a community project.
+
+
+* Use Cases
+
+#+NAME: load_package
+#+BEGIN_SRC R :session *R-ss-vignette* :exports code :ravel results='hide',message=FALSE
+  library(HighSpeedStats)
+
+  library(microbenchmark)
+#+END_SRC
+
+
+** Fisher's Exact Test
+
+Fisher's Exact Test is used on contingency tables, in most cases a 2x2 table.
+In computational biology, this has been applied for example in detecting
+enrichment in gene sets or identifying strand biases in variant calling.
+
+We compare different methods by sampling all possible configurations in the
+parameter space $(a, b, c, d) \in (0..m, 0..m, 0..m, 0..m)$ for the contingency
+table
+
+$$
+\begin{array}{cc}
+a & b\\
+c & d
+\end{array}
+$$
+
+
+#+BEGIN_SRC R
+  m = 20
+  grid = expand.grid(a = 0:m, b = 0:m, c = 0:m , d = 0:m)
+#+END_SRC
+
+#+BEGIN_SRC R
+  head(grid, 4)
+#+END_SRC
+
+#+BEGIN_SRC R
+  dim(grid)
+#+END_SRC
+
+
+Here, we will compare the performance of three methods:
+
+- feTestR :: A reference implementation, taken from the =VariantTools= package
+             and based on the base =R= function =fisher.test=.
+
+- fisherExactTest :: An optimized equivalent to =feTestR=, using the =boost=
+     library.  Please note that due to limitations of the =boost= library, using
+     this implementation is only beneficial for samples sizes ~< 170.
+
+- ultrafastfet :: A highly optimized function, implemented in =C++=.  At the
+                  moment, this uses a different numerical stabilization than the
+                  approaches mentioned above, which can results in deviations of
+                  the computed p-values compared to the other two methods.
+     
+#+BEGIN_SRC R
+  bench = microbenchmark(
+      p1 <- with(grid, feTestR(a, b, c, d)),
+      p2 <- with(grid, fisherExactTest(a, b, c, d)),
+      p3 <- with(grid, ultrafastfet(a, b, c, d)),
+      times = 3)
+#+END_SRC
+
+#+BEGIN_SRC R
+  bench
+#+END_SRC
+
+The results from the =feTestR= and =ultrafastfet= yield the same p-values, minor
+differences are due to rounding errors.
+
+#+BEGIN_SRC R
+  all.equal(p1, p3)
+#+END_SRC
+
+
+*** Extensive testing                                            :noexport:
+
+#+BEGIN_SRC R
+  bench = microbenchmark(
+      p0 <- with(grid, mapply(foo, a, b, c, d)),
+      p1 <- with(grid, feTestR(a, b, c, d)),
+      p2 <- with(grid, fisherExactTest(a, b, c, d)),
+      p3 <- with(grid, ultrafastfet(a, b, c, d)),
+      times = 1)
+
+  all.equal(p0, p1)
+
+  foo <- function(a, b, c, d) {
+      fisher.test(matrix(c(a, b, c, d), 2))$p.value
+  }
+#+END_SRC
+
+
+** Maximum Position in Matrix
+
+If we consider for example a matrix with nucleotide counts across multiple
+positions, we can derive the consensus sequence by finding the nucleotide with
+the highest abundance at each site.  
+
+Essentially, this boils down to finding the position with the maximal value in
+each row of a matrix.  The =max.col= base R function would be the starting point
+for this.  However, we would like tied within a row to be indicated, which we
+cannot do directly with the =max.col= function.  We have written the =maxColR=
+function that does this for us as a reference, the =maxCol= provides the
+efficient implementation.
+
+#+BEGIN_SRC R
+  maxColR
+#+END_SRC
+
+#+BEGIN_SRC R
+  m = matrix(rbinom(1e6, 50, 0.5), ncol = 4)
+#+END_SRC
+
+#+BEGIN_SRC R
+  head(m)
+#+END_SRC
+
+Comparing the performance reveals a lower runtime of the =maxCol= implementation.
+
+#+BEGIN_SRC R
+  bench2 = microbenchmark(
+      idx_old <- maxColR(m),
+      idx_new <- maxCol(m),
+      times = 5)
+#+END_SRC
+
+#+BEGIN_SRC R
+  bench2
+#+END_SRC
+
+Finally, we show that the results of both implementations are identical.
+
+#+BEGIN_SRC R
+  identical(idx_old, idx_new)
+#+END_SRC
+
+
+* Session Info
+
+#+BEGIN_SRC R :ravel echo=FALSE, results='markup'
+  sessionInfo()
+#+END_SRC
+

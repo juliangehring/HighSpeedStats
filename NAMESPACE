@@ -1,0 +1,5 @@
+useDynLib("HighSpeedStats")
+
+importFrom(Rcpp, evalCpp)
+
+exportPattern("^[[:alpha:]]+")

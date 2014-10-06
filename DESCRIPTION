@@ -1,0 +1,16 @@
+Package: HighSpeedStats
+Type: Package
+Title: High Speed Stats
+Version: 1.0.0
+Author: Julian Gehring
+Maintainer: Julian Gehring <julian.gehring@embl.de>
+Imports: Rcpp (>= 0.11.0)
+Depends: R (>= 3.1.0)
+Suggests: testthat, knitr, microbenchmark
+LinkingTo: Rcpp , BH (>= 1.54.0.0)
+Description: High performance statistical functions
+VignetteBuilder: knitr
+Encoding: UTF-8
+ByteCompile: TRUE
+License: MIT + file LICENSE
+LazyLoad: yes

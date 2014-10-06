@@ -1,0 +1,381 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<title>High Speed Statistics: Efficient Statistical Implementations</title>
+<!-- 2014-10-02 Do 12:49 -->
+<meta  http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta  name="generator" content="Org-mode" />
+<meta  name="author" content="Julian Gehring" />
+<link rel="stylesheet" type="text/css" href="https://julian-gehring.github.io/bioc.css" />
+
+<script type="text/javascript" src="http://orgmode.org/org-info.js">
+/**
+ * @source: http://orgmode.org/org-info.js
+ * @licstart  The following is the entire license notice for the
+ *  JavaScript code in http://orgmode.org/org-info.js.
+ * @licend  The above is the entire license notice
+ * for the JavaScript code in http://orgmode.org/org-info.js.
+ */
+</script>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+org_html_manager.set("TOC_DEPTH", "6");
+org_html_manager.set("LINK_HOME", "");
+org_html_manager.set("LINK_UP", "");
+org_html_manager.set("LOCAL_TOC", "0");
+org_html_manager.set("VIEW_BUTTONS", "0");
+org_html_manager.set("MOUSE_HINT", "underline");
+org_html_manager.set("FIXED_TOC", "1");
+org_html_manager.set("TOC", "1");
+org_html_manager.set("VIEW", "showall");
+org_html_manager.setup();  // activate after the parameters are set
+/*]]>*///-->
+</script>
+<script type="text/javascript">
+/*
+@licstart  The following is the entire license notice for the
+JavaScript code in this tag.
+
+Copyright (C) 2012-2013 Free Software Foundation, Inc.
+
+The JavaScript code in this tag is free software: you can
+redistribute it and/or modify it under the terms of the GNU
+General Public License (GNU GPL) as published by the Free Software
+Foundation, either version 3 of the License, or (at your option)
+any later version.  The code is distributed WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU GPL for more details.
+
+As additional permission under GNU GPL version 3 section 7, you
+may distribute non-source (e.g., minimized or compacted) forms of
+that code without the copy of the GNU GPL normally required by
+section 4, provided you include this license notice and a URL
+through which recipients can access the Corresponding Source.
+
+
+@licend  The above is the entire license notice
+for the JavaScript code in this tag.
+*/
+<!--/*--><![CDATA[/*><!--*/
+ function CodeHighlightOn(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(null != target) {
+     elem.cacheClassElem = elem.className;
+     elem.cacheClassTarget = target.className;
+     target.className = "code-highlighted";
+     elem.className   = "code-highlighted";
+   }
+ }
+ function CodeHighlightOff(elem, id)
+ {
+   var target = document.getElementById(id);
+   if(elem.cacheClassElem)
+     elem.className = elem.cacheClassElem;
+   if(elem.cacheClassTarget)
+     target.className = elem.cacheClassTarget;
+ }
+/*]]>*///-->
+</script>
+<script type="text/javascript" src="http://orgmode.org/mathjax/MathJax.js"></script>
+<script type="text/javascript">
+<!--/*--><![CDATA[/*><!--*/
+    MathJax.Hub.Config({
+        // Only one of the two following lines, depending on user settings
+        // First allows browser-native MathML display, second forces HTML/CSS
+        //  config: ["MMLorHTML.js"], jax: ["input/TeX"],
+            jax: ["input/TeX", "output/HTML-CSS"],
+        extensions: ["tex2jax.js","TeX/AMSmath.js","TeX/AMSsymbols.js",
+                     "TeX/noUndefined.js"],
+        tex2jax: {
+            inlineMath: [ ["\\(","\\)"] ],
+            displayMath: [ ['$$','$$'], ["\\[","\\]"], ["\\begin{displaymath}","\\end{displaymath}"] ],
+            skipTags: ["script","noscript","style","textarea","pre","code"],
+            ignoreClass: "tex2jax_ignore",
+            processEscapes: false,
+            processEnvironments: true,
+            preview: "TeX"
+        },
+        showProcessingMessages: true,
+        displayAlign: "center",
+        displayIndent: "2em",
+
+        "HTML-CSS": {
+             scale: 100,
+             availableFonts: ["STIX","TeX"],
+             preferredFont: "TeX",
+             webFont: "TeX",
+             imageFont: "TeX",
+             showMathMenu: true,
+        },
+        MMLorHTML: {
+             prefer: {
+                 MSIE:    "MML",
+                 Firefox: "MML",
+                 Opera:   "HTML",
+                 other:   "HTML"
+             }
+        }
+    });
+/*]]>*///-->
+</script>
+</head>
+<body>
+<div id="content">
+<h1 class="title">High Speed Statistics: Efficient Statistical Implementations</h1>
+<div id="table-of-contents">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents">
+<ul>
+<li><a href="#sec-1">1. Motivation</a></li>
+<li><a href="#sec-2">2. Use Cases</a>
+<ul>
+<li><a href="#sec-2-1">2.1. Fisher's Exact Test</a></li>
+<li><a href="#sec-2-2">2.2. Maximum Position in Matrix</a></li>
+</ul>
+</li>
+<li><a href="#sec-3">3. Session Info</a></li>
+</ul>
+</div>
+</div>
+<!--
+%\VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{HighSpeedStats}
+%\VignettePackage{HighSpeedStats}
+-->
+
+
+<!--begin.rcode results='hide', echo=FALSE, message=FALSE, warning=FALSE
+set.seed(1)
+
+options(width = 70)
+
+library(knitr)
+
+style_sheet = "bioc.css"
+style = if(file.exists(style_sheet)) {
+    paste(readLines(style_sheet), collapse = "\n")
+}
+
+opts_knit$set(self.contained = TRUE,
+              upload.fun = image_uri,
+              header = c(highlight = style))
+
+opts_chunk$set(comment = "  ",
+               fig.path = "",
+               fig.align = "center",
+               out.width = "100%",
+               dpi = 300,
+               indent = 10,
+               cache = FALSE,
+               cache.path = "../cache")
+
+knit_hooks$set(fig.cap = function(before, options, envir) {
+    if(!before) {
+        paste('<p class="caption">',options$fig.cap,"</p>",sep="")
+    }
+})
+end.rcode-->
+
+
+<div id="outline-container-sec-1" class="outline-2">
+<h2 id="sec-1"><span class="section-number-2">1</span> Motivation</h2>
+<div class="outline-text-2" id="text-1">
+<p>
+The amount of data in the field of computational biology increases at a fast
+pace, and together with this the computational demands for analyzing it.  This
+setting poses new challenges to the algorithms and implementations used in the
+analysis of this data, and demand for a high-throughput processing of big
+amounts of data efficiently.
+</p>
+
+<p>
+The <code>R</code> programming languages has gained a central role in the analysis
+workflows of biological data.  While a large number of relevant methods are
+offered by this, the implementations are often not suited for a large scale
+analysis, and can become a bottleneck.
+</p>
+
+<p>
+With the <code>highSpeedStats</code> package, we provide a selected set of statistical
+functions, optimized for a speed and memory efficient implementation.  We plan
+to release the existing functionality as an open-source project, and continue
+the development as a community project.
+</p>
+</div>
+</div>
+
+
+<div id="outline-container-sec-2" class="outline-2">
+<h2 id="sec-2"><span class="section-number-2">2</span> Use Cases</h2>
+<div class="outline-text-2" id="text-2">
+<!--begin.rcode load_package, results='hide',message=FALSE
+library(HighSpeedStats)
+
+library(microbenchmark)
+end.rcode-->
+</div>
+
+
+<div id="outline-container-sec-2-1" class="outline-3">
+<h3 id="sec-2-1"><span class="section-number-3">2.1</span> Fisher's Exact Test</h3>
+<div class="outline-text-3" id="text-2-1">
+<p>
+Fisher's Exact Test is used on contingency tables, in most cases a 2x2 table.
+In computational biology, this has been applied for example in detecting
+enrichment in gene sets or identifying strand biases in variant calling.
+</p>
+
+<p>
+We compare different methods by sampling all possible configurations in the
+parameter space \((a, b, c, d) \in (0..m, 0..m, 0..m, 0..m)\) for the contingency
+table
+</p>
+
+<p>
+$$
+</p>
+\begin{array}{cc}
+a & b\\
+c & d
+\end{array}
+<p>
+$$
+</p>
+
+
+<!--begin.rcode 
+m = 20
+grid = expand.grid(a = 0:m, b = 0:m, c = 0:m , d = 0:m)
+end.rcode-->
+
+<!--begin.rcode 
+head(grid, 4)
+end.rcode-->
+
+<!--begin.rcode 
+dim(grid)
+end.rcode-->
+
+
+<p>
+Here, we will compare the performance of three methods:
+</p>
+
+<dl class="org-dl">
+<dt> feTestR </dt><dd>A reference implementation, taken from the <code>VariantTools</code> package
+and based on the base <code>R</code> function <code>fisher.test</code>.
+</dd>
+
+<dt> fisherExactTest </dt><dd>An optimized equivalent to <code>feTestR</code>, using the <code>boost</code>
+library.  Please note that due to limitations of the <code>boost</code> library, using
+this implementation is only beneficial for samples sizes ~&lt; 170.
+</dd>
+
+<dt> ultrafastfet </dt><dd>A highly optimized function, implemented in <code>C++</code>.  At the
+moment, this uses a different numerical stabilization than the
+approaches mentioned above, which can results in deviations of
+the computed p-values compared to the other two methods.
+</dd>
+</dl>
+
+<!--begin.rcode 
+bench = microbenchmark(
+    p1 <- with(grid, feTestR(a, b, c, d)),
+    p2 <- with(grid, fisherExactTest(a, b, c, d)),
+    p3 <- with(grid, ultrafastfet(a, b, c, d)),
+    times = 3)
+end.rcode-->
+
+<!--begin.rcode 
+bench
+end.rcode-->
+
+<p>
+The results from the <code>feTestR</code> and <code>ultrafastfet</code> yield the same p-values, minor
+differences are due to rounding errors.
+</p>
+
+<!--begin.rcode 
+all.equal(p1, p3)
+end.rcode-->
+</div>
+</div>
+
+
+<div id="outline-container-sec-2-2" class="outline-3">
+<h3 id="sec-2-2"><span class="section-number-3">2.2</span> Maximum Position in Matrix</h3>
+<div class="outline-text-3" id="text-2-2">
+<p>
+If we consider for example a matrix with nucleotide counts across multiple
+positions, we can derive the consensus sequence by finding the nucleotide with
+the highest abundance at each site.  
+</p>
+
+<p>
+Essentially, this boils down to finding the position with the maximal value in
+each row of a matrix.  The <code>max.col</code> base R function would be the starting point
+for this.  However, we would like tied within a row to be indicated, which we
+cannot do directly with the <code>max.col</code> function.  We have written the <code>maxColR</code>
+function that does this for us as a reference, the <code>maxCol</code> provides the
+efficient implementation.
+</p>
+
+<!--begin.rcode 
+maxColR
+end.rcode-->
+
+<!--begin.rcode 
+m = matrix(rbinom(1e6, 50, 0.5), ncol = 4)
+end.rcode-->
+
+<!--begin.rcode 
+head(m)
+end.rcode-->
+
+<p>
+Comparing the performance reveals a lower runtime of the <code>maxCol</code> implementation.
+</p>
+
+<!--begin.rcode 
+bench2 = microbenchmark(
+    idx_old <- maxColR(m),
+    idx_new <- maxCol(m),
+    times = 5)
+end.rcode-->
+
+<!--begin.rcode 
+bench2
+end.rcode-->
+
+<p>
+Finally, we show that the results of both implementations are identical.
+</p>
+
+<!--begin.rcode 
+identical(idx_old, idx_new)
+end.rcode-->
+</div>
+</div>
+</div>
+
+
+<div id="outline-container-sec-3" class="outline-2">
+<h2 id="sec-3"><span class="section-number-2">3</span> Session Info</h2>
+<div class="outline-text-2" id="text-3">
+<!--begin.rcode echo=FALSE, results='markup'
+sessionInfo()
+end.rcode-->
+</div>
+</div>
+</div>
+</body>
+</html>

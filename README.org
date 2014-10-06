@@ -1,0 +1,196 @@
+* HighSpeedStats: Efficient Statistical Implementations
+
+#+PROPERTY: session *R-vignette*
+
+** Motivation
+
+The amount of data in the field of computational biology increases at a fast
+pace, and together with this the computational demands for analyzing it.  This
+setting poses new challenges to the algorithms and implementations used in the
+analysis of this data, and demand for a high-throughput processing of big
+amounts of data efficiently.
+
+The =R= programming languages has gained a central role in the analysis
+workflows of biological data.  While a large number of relevant methods are
+offered by this, the implementations are often not suited for a large scale
+analysis, and can become a bottleneck.
+
+With the =highSpeedStats= package, we provide a selected set of statistical
+functions, optimized for a speed and memory efficient implementation.  We plan
+to release the existing functionality as an open-source project, and continue
+the development as a community project.
+
+
+** Use Cases
+
+#+NAME: load_package
+#+BEGIN_SRC R :session *R-ss-vignette* :results output silent :exports code :ravel results='hide',message=FALSE
+  library(HighSpeedStats)
+
+  library(microbenchmark)
+#+END_SRC
+
+
+** Fisher's Exact Test
+
+Fisher's Exact Test is used on contingency tables, in most cases a 2x2 table.
+In computational biology, this has been applied for example in detecting
+enrichment in gene sets or identifying strand biases in variant calling.
+
+We compare different methods by sampling all possible configurations in the
+parameter space $(a, b, c, d) \in (0..m, 0..m, 0..m, 0..m)$ for the contingency
+table
+
+| a | b |
+| c | d |
+
+#+BEGIN_SRC R :session *R-ss-vignette* :results output silent
+  m = 20
+  grid = expand.grid(a = 0:m, b = 0:m, c = 0:m , d = 0:m)
+#+END_SRC
+
+#+BEGIN_SRC R :session *R-ss-vignette*
+  rbind(head(grid, 3), tail(grid, 3))
+#+END_SRC
+
+ #+RESULTS:
+ |  0 |  0 |  0 |  0 |
+ |  1 |  0 |  0 |  0 |
+ |  2 |  0 |  0 |  0 |
+ | 18 | 20 | 20 | 20 |
+ | 19 | 20 | 20 | 20 |
+ | 20 | 20 | 20 | 20 |
+
+#+BEGIN_SRC R :session *R-ss-vignette*
+  dim(grid)
+#+END_SRC
+
+#+RESULTS:
+| 194481 |
+|      4 |
+
+
+Here, we will compare the performance of three methods:
+
+- feTestR :: A reference implementation, taken from the =VariantTools= package
+             and based on the base =R= function =fisher.test=.  In the current
+             setting, this is about 60 faster that =apply= ing over the rows of
+             the matrix and extracting the p-value.
+
+- fisherExactTest :: An optimized equivalent to =feTestR=, using the =boost=
+     library.  Please note that due to limitations of the =boost= library, using
+     this implementation is only beneficial for samples sizes ~< 170.
+
+- ultrafastfet :: A highly optimized function, implemented in =C++=.  At the
+                  moment, this uses a different numerical stabilization than the
+                  approaches mentioned above, which can results in deviations of
+                  the computed p-values compared to the other two methods.
+     
+#+BEGIN_SRC R :session *R-ss-vignette* :results output silent
+  bench = microbenchmark(
+      p1 <- with(grid, feTestR(a, b, c, d)),
+      p2 <- with(grid, fisherExactTest(a, b, c, d)),
+      p3 <- with(grid, ultrafastfet(a, b, c, d)),
+      times = 3)
+#+END_SRC
+
+#+BEGIN_SRC R :session *R-ss-vignette* :colnames yes
+  print(bench)
+#+END_SRC
+
+#+RESULTS:
+| expr                                          |         min |           lq |             mean |      median |           uq |         max | neval |
+|-----------------------------------------------+-------------+--------------+------------------+-------------+--------------+-------------+-------|
+| p1 <- with(grid, feTestR(a, b, c, d))         | 4167.466194 | 4183.6878355 | 4204.49878166667 | 4199.909477 | 4223.0150755 | 4246.120674 |     3 |
+| p2 <- with(grid, fisherExactTest(a, b, c, d)) |  605.507734 |  605.6629355 | 606.295877333333 |  605.818137 |   606.689949 |  607.561761 |     3 |
+| p3 <- with(grid, ultrafastfet(a, b, c, d))    |  110.728237 |  113.1032895 | 114.134416666667 |  115.478342 |  115.8375065 |  116.196671 |     3 |
+
+The results from the =feTestR= and =ultrafastfet= yield the same p-values, minor
+differences are due to rounding errors.
+
+#+BEGIN_SRC R :session *R-ss-vignette*
+  all.equal(p1, p3)
+#+END_SRC
+
+#+RESULTS:
+: TRUE
+
+
+*** Extensive testing                                            :noexport:
+
+#+BEGIN_SRC R :session *R-ss-vignette*
+  bench = microbenchmark(
+      p0 <- with(grid, mapply(foo, a, b, c, d)),
+      p1 <- with(grid, feTestR(a, b, c, d)),
+      p2 <- with(grid, fisherExactTest(a, b, c, d)),
+      p3 <- with(grid, ultrafastfet(a, b, c, d)),
+      times = 1)
+
+  all.equal(p0, p1)
+
+  foo <- function(a, b, c, d) {
+      fisher.test(matrix(c(a, b, c, d), 2))$p.value
+  }
+#+END_SRC
+
+
+** Maximum Position in Matrix
+
+If we consider for example a matrix with nucleotide counts across multiple
+positions, we can derive the consensus sequence by finding the nucleotide with
+the highest abundance at each site.  
+
+Essentially, this boils down to finding the position with the maximal value in
+each row of a matrix.  The =max.col= base R function would be the starting point
+for this.  However, we would like tied within a row to be indicated, which we
+cannot do directly with the =max.col= function.  We have written the =maxColR=
+function that does this for us as a reference, the =maxCol= provides the
+efficient implementation.
+
+#+BEGIN_SRC R :session *R-ss-vignette* :results output silent
+  m = matrix(rbinom(1e6, 50, 0.5), ncol = 4)
+#+END_SRC
+
+#+BEGIN_SRC R :session *R-ss-vignette* :colnames yes
+  head(m)
+#+END_SRC
+
+#+RESULTS:
+| V1 | V2 | V3 | V4 |
+|----+----+----+----|
+| 20 | 26 | 28 | 28 |
+| 22 | 24 | 29 | 21 |
+| 19 | 27 | 21 | 21 |
+| 31 | 31 | 23 | 22 |
+| 22 | 21 | 29 | 24 |
+| 31 | 24 | 27 | 28 |
+
+Comparing the performance reveals a lower runtime of the =maxCol= implementation.
+
+#+BEGIN_SRC R :session *R-ss-vignette* :results output silent
+  bench2 = microbenchmark(
+      idx_old <- maxColR(m),
+      idx_new <- maxCol(m),
+      times = 5)
+#+END_SRC
+
+#+BEGIN_SRC R :session *R-ss-vignette* :colnames yes
+  print(bench2)
+#+END_SRC
+
+#+RESULTS:
+| expr                  |       min |        lq |        mean |    median |         uq |        max | neval |
+|-----------------------+-----------+-----------+-------------+-----------+------------+------------+-------|
+| idx_old <- maxColR(m) | 85.036763 | 85.644796 | 103.4979374 | 86.826066 | 114.033516 | 145.948546 |     5 |
+| idx_new <- maxCol(m)  |  5.432523 |  5.448471 |  17.3077956 |  6.474846 |  34.354519 |  34.828619 |     5 |
+
+Finally, we show that the results of both implementations are identical.
+
+#+BEGIN_SRC R :session *R-ss-vignette*
+  identical(idx_old, idx_new)
+#+END_SRC
+
+#+RESULTS:
+: TRUE
+
+More information can be found in the manual pages of the individual functions.
