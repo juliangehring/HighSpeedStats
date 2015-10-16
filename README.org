@@ -2,6 +2,10 @@
 
 #+PROPERTY: session *R-vignette*
 
+#+BEGIN_SRC markdown
+  [![Build Status](https://travis-ci.org/julian-gehring/HighSpeedStats.svg)](https://travis-ci.org/julian-gehring/HighSpeedStats)
+#+END_SRC
+
 ** Motivation
 
 The amount of data in the field of computational biology increases at a fast
