@@ -3,18 +3,8 @@ fisherExactTest <- function(a, b, c, d) {
 }
 
 
-.fastfet <- function(a, b, c, d) {
-    .Call('HighSpeedStats_fastfet', PACKAGE = 'HighSpeedStats', a, b, c, d)
-}
-
-
 ultrafastfet <- function(a, b, c, d) {
     .Call('HighSpeedStats_ultrafastfet', PACKAGE = 'HighSpeedStats', a, b, c, d)
-}
-
-
-.jltrafastfet <- function(a, b, c, d) {
-    .Call('HighSpeedStats_jltrafastfet', PACKAGE = 'HighSpeedStats', a, b, c, d)
 }
 
 

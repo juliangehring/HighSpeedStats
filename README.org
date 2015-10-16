@@ -7,9 +7,6 @@
 [[https://codecov.io/github/julian-gehring/HighSpeedStats?branch=master][file:https://codecov.io/github/julian-gehring/HighSpeedStats/coverage.svg?branch=master]]
 
 
-[[file:https:/codecov.io/github/julian-gehring/HighSpeedStats/coverage.svg?branch=master][https://codecov.io]]
-
-
 ** Motivation
 
 The amount of data in the field of computational biology increases at a fast
