@@ -2,9 +2,9 @@
 
 #+PROPERTY: session *R-vignette*
 
-[[https://travis-ci.org/julian-gehring/HighSpeedStats][file:https://travis-ci.org/julian-gehring/HighSpeedStats.svg?branch=master]]
+[[https://travis-ci.org/juliangehring/HighSpeedStats][file:https://travis-ci.org/juliangehring/HighSpeedStats.svg?branch=master]]
 
-[[https://codecov.io/github/julian-gehring/HighSpeedStats?branch=master][file:https://codecov.io/github/julian-gehring/HighSpeedStats/coverage.svg?branch=master]]
+[[https://codecov.io/github/juliangehring/HighSpeedStats?branch=master][file:https://codecov.io/github/juliangehring/HighSpeedStats/coverage.svg?branch=master]]
 
 
 ** Motivation
