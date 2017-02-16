@@ -33,6 +33,9 @@ feTestR(a, b, c, d, relErr = 1 + 1e-07)
 }
 
 \details{
+  
+  A set of different implementations for computing two-sided p-values
+  with Fisher's Exact Test:
 
   The 'fisherExactTest' will return the same p-values as the
   'fisher.test' function that comes with R.  This version relies on the
@@ -54,6 +57,9 @@ feTestR(a, b, c, d, relErr = 1 + 1e-07)
   returns only the two-sided p-values (taken from the 'VariantTools'
   package).
 
+  Please note that these implementations focus on computing two-sided
+  p-values; in contrast, one-sided p-values can be efficiently obtained
+  with 'phyper' in the 'stats' package.
 }
 
 \seealso{
@@ -61,6 +67,8 @@ feTestR(a, b, c, d, relErr = 1 + 1e-07)
   fisher.test
 
   VariantTools:::fisher_p
+
+  stats::phyper for one-sided p-values
 
 }
 

@@ -74,7 +74,8 @@ table
 |      4 |
 
 
-Here, we will compare the performance of three methods:
+Here, we will compare the performance of three methods to compute two-sided
+p-values with Fisher's Exact Test:
 
 - feTestR :: A reference implementation, taken from the =VariantTools= package
              and based on the base =R= function =fisher.test=.  In the current
@@ -109,8 +110,8 @@ Here, we will compare the performance of three methods:
 | p2 <- with(grid, fisherExactTest(a, b, c, d)) |  605.507734 |  605.6629355 | 606.295877333333 |  605.818137 |   606.689949 |  607.561761 |     3 |
 | p3 <- with(grid, ultrafastfet(a, b, c, d))    |  110.728237 |  113.1032895 | 114.134416666667 |  115.478342 |  115.8375065 |  116.196671 |     3 |
 
-The results from the =feTestR= and =ultrafastfet= yield the same p-values, minor
-differences are due to rounding errors.
+The results from the =feTestR= and =ultrafastfet= yield the same two-sided p-values,
+minor differences are due to rounding errors.
 
 #+BEGIN_SRC R :session *R-ss-vignette*
   all.equal(p1, p3)
